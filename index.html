@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lua Playground — Demo</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/dracula.css">
+
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #14171f;
+    --panel-2: #1a1e29;
+    --border: #262c3a;
+    --text: #e6e9f0;
+    --muted: #8b93a7;
+    --accent: #4f9cf7;
+    --accent-2: #3d8bf0;
+    --green: #69db7c;
+    --red: #ff6b6b;
+    --yellow: #ffd43b;
+    --mono: "Cascadia Code", "JetBrains Mono", "Fira Code", Consolas, "Courier New", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(900px 300px at 50% -100px, rgba(79, 156, 247, 0.12), transparent),
+      radial-gradient(700px 300px at 100% 0%, rgba(105, 219, 124, 0.06), transparent);
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 32px 20px 56px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 6px;
+  }
+
+  .logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    color: #0b0d12;
+    background: linear-gradient(135deg, #7dc4ff, #4f9cf7 60%, #2b6fd6);
+    box-shadow: 0 0 0 1px rgba(125, 196, 255, 0.4), 0 4px 18px rgba(79, 156, 247, 0.35);
+  }
+
+  h1 { font-size: 22px; margin: 0; letter-spacing: 0.2px; }
+  .subtitle { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .badge b { color: var(--green); font-weight: 600; }
+
+  nav.tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 24px 0 14px;
+  }
+  .tab {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+    padding: 8px 14px;
+    border-radius: 9px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tab:hover { color: var(--text); border-color: #33415a; }
+  .tab.active {
+    background: rgba(79, 156, 247, 0.14);
+    border-color: var(--accent);
+    color: #bcd8ff;
+  }
+
+  .description {
+    color: var(--muted);
+    font-size: 13.5px;
+    margin: 0 0 14px;
+    padding: 0 2px;
+  }
+
+  .playground {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .lang {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffd93b;
+    background: rgba(255, 217, 59, 0.1);
+    border: 1px solid rgba(255, 217, 59, 0.25);
+    padding: 3px 9px;
+    border-radius: 6px;
+    margin-right: 2px;
+  }
+  .hint { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+
+  .btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: #212838;
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 13px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { border-color: #3b4a68; background: #283147; }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn.run {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+    color: #fff;
+    padding: 6px 20px;
+    box-shadow: 0 4px 14px rgba(79, 156, 247, 0.3);
+  }
+  .btn.run:hover { filter: brightness(1.08); border-color: transparent; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  .btn.compile {
+    border-color: rgba(105, 219, 124, 0.4);
+    color: #a5e6b4;
+  }
+  .btn.compile:hover { border-color: rgba(105, 219, 124, 0.7); background: rgba(105, 219, 124, 0.08); }
+
+  #editor { border-bottom: 1px solid var(--border); }
+  #editor .CodeMirror {
+    height: auto;
+    min-height: 220px;
+    background: #171a22;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  #editor .cm-s-dracula.CodeMirror,
+  #editor .cm-s-dracula .CodeMirror-gutters { background: #171a22; }
+  #editor .cm-s-dracula .CodeMirror-gutters { border-right: 1px solid #262c3a; }
+
+  .console-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .console-head .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  #output {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 88px;
+    max-height: 320px;
+    overflow: auto;
+    padding: 12px 14px;
+    background: #0e1118;
+  }
+  #output .line { white-space: pre-wrap; word-break: break-word; }
+  #output .out-stdout { color: #eef1f6; }
+  #output .out-error  { color: var(--red); }
+  #output .out-warn   { color: var(--yellow); }
+  #output .out-ok     { color: var(--green); }
+  #output .out-time   { color: var(--green); font-size: 11.5px; margin-top: 4px; }
+  #output .empty { color: #4b5468; font-style: italic; }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 26px;
+  }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">Lua</div>
+      <div>
+        <h1>Lua Playground</h1>
+        <div class="subtitle">Interactive demos straight from <em>Programming in Lua</em></div>
+      </div>
+      <div class="badge">Lua <b>5.4</b> · Wasmoon in-browser</div>
+    </header>
+
+    <nav class="tabs" id="tabs"></nav>
+
+    <p class="description" id="description"></p>
+
+    <div class="playground">
+      <div class="toolbar">
+        <span class="lang">lua</span>
+        <button class="btn run" id="runBtn" disabled>Run</button>
+        <button class="btn compile" id="compileBtn" disabled>Compile</button>
+        <button class="btn" id="resetBtn">Reset</button>
+        <button class="btn" id="copyBtn">Copy</button>
+        <span class="hint">Auto-runs on switch · Ctrl&#8209;Enter to run</span>
+      </div>
+      <div id="editor"></div>
+      <div class="console-head"><span class="dot"></span> Output</div>
+      <div id="output"></div>
+    </div>
+
+    <footer>
+      Runs <b>Lua 5.4</b> compiled to WebAssembly via <a href="https://github.com/ceifa/wasmoon" target="_blank" rel="noopener">Wasmoon</a>.
+      Editor: <a href="https://codemirror.net/5/" target="_blank" rel="noopener">CodeMirror</a>.
+      Every run starts a fresh VM so each example stays isolated.
+    </footer>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/lua/lua.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/wasmoon@1.16.0/dist/index.js"></script>
+
+<script>
+const EXAMPLES = [
+  {
+    title: "Hello World",
+    description: "The classic first program — print() writes a line to the console below.",
+    code: `print("Hello World!")`
+  },
+  {
+    title: "Variables & Types",
+    description: "Lua has eight basic types. type() tells you which one a value is.",
+    code: `-- the eight basic types
+local n = 42                    -- number
+local s = "Lua"                 -- string
+local b = true                  -- boolean
+local f = function() end        -- function
+local t = {}                    -- table
+local u = nil                   -- nil
+
+print(type(n))   --> number
+print(type(s))   --> string
+print(type(b))   --> boolean
+print(type(f))   --> function
+print(type(t))   --> table
+print(type(u))   --> nil`
+  },
+  {
+    title: "Control Flow",
+    description: "A recursive factorial — classic if/else, and a numeric for loop.",
+    code: `local function factorial(n)
+  if n <= 1 then
+    return 1
+  else
+    return n * factorial(n - 1)
+  end
+end
+
+for i = 1, 8 do
+  print(i .. "! = " .. factorial(i))
+end`
+  },
+  {
+    title: "Tables",
+    description: "Tables are Lua's only data structure — arrays and records in one.",
+    code: `-- arrays start at 1, not 0
+local weekdays = { "Mon", "Tue", "Wed", "Thu", "Fri" }
+for i, day in ipairs(weekdays) do
+  print(i, day)
+end
+
+-- records are just tables too
+local point = { x = 10, y = 20 }
+print("point = (" .. point.x .. ", " .. point.y .. ")")
+
+-- print() shows a table's identity, not its contents
+print(point)   --> table: 0x...`
+  },
+  {
+    title: "Hash Tables",
+    description: "Tables as hash maps. print() shows a table's identity address — to see its values, iterate with pairs().",
+    code: `-- any value can be a key: strings, numbers, even other tables
+local user = {
+  name = "Ada Lovelace",
+  age  = 36,
+  tags = { "pioneer", "mathematician" },
+}
+
+user.role = "programmer"   -- add a field
+user.age  = 37             -- update a field
+
+-- print() shows the table's identity address, not its contents
+print(user)
+
+-- to see the values, iterate with pairs()
+for k, v in pairs(user) do
+  print(k, v)
+end
+
+-- counting word frequencies (classic hash-map use)
+local counts = {}
+for word in string.gmatch("lua lua lua is fun", "%a+") do
+  counts[word] = (counts[word] or 0) + 1
+end
+for k, v in pairs(counts) do
+  print(k, v)
+end`
+  },
+  {
+    title: "Strings",
+    description: "A tour of the string library — formatting, repetition, patterns.",
+    code: `print(string.upper("hello"))
+print(string.format("%.2f", math.pi))
+print(string.rep("ha", 3))
+print(string.sub("hello world", 1, 5))
+print(string.gsub("lua rocks", "o", "0"))`
+  },
+  {
+    title: "Expressions",
+    description: "REPL-style: type a bare expression and it evaluates automatically — no print() needed.",
+    code: `5 * 5`
+  },
+  {
+    title: "Errors",
+    description: "Syntax and runtime errors are caught and shown in red instead of crashing the page.",
+    code: `local function add(a, b)
+  return a + b
+end
+
+print(add(2, 3))
+
+-- this one will fail at runtime...
+print(add(2, "x"))`
+  },
+  {
+    title: "Multiple Returns",
+    description: "Functions can return several values at once. Retrieve them with multiple assignment or select().",
+    code: `-- string.find returns two values: start and end index
+local s = "hello world"
+local a, b = string.find(s, "world")   -- retrieve both values
+print(a, b)                            --> 7  11
+
+-- string.gsub returns the new string and a match count
+local new, n = string.gsub(s, "o", "0") -- retrieve both
+print(new)                             --> hell0 w0rld
+print(n)                               --> 2
+
+-- select() counts or picks from the extra arguments
+print(select("#", s, 42, true))        --> 3
+print(select(2, "a", "b", "c"))        --> b   c`
+  },
+  {
+    title: "Varargs",
+    description: "A function can accept a variable number of arguments (...). Retrieve them one by one or collect them with table.pack().",
+    code: `local function sum(...)
+  local total = 0
+  for i = 1, select("#", ...) do
+    total = total + select(i, ...)     -- retrieve each argument
+  end
+  return total
+end
+
+print(sum(1, 2, 3))                    --> 6
+print(sum(10, 20, 30, 40))             --> 100
+
+-- table.pack collects all varargs into a table
+local function first(...)
+  local args = table.pack(...)
+  return args[1]                       -- retrieve the first one
+end
+print(first("x", "y", "z"))            --> x`
+  },
+  {
+    title: "Closures",
+    description: "A function that references outer local variables (upvalues) keeps them alive. Each call to the factory gets its own counter.",
+    code: `local function makeCounter()
+  local count = 0                      -- upvalue, captured below
+  return function()
+    count = count + 1
+    return count                       -- retrieve the stored value
+  end
+end
+
+local c1 = makeCounter()
+local c2 = makeCounter()
+
+print(c1())  --> 1
+print(c1())  --> 2
+print(c2())  --> 1   (independent counter)`
+  },
+  {
+    title: "Metatables",
+    description: "Metatables change how a table behaves — missing-key lookup (__index), string conversion, arithmetic. Values are retrieved through those metamethods.",
+    code: `local defaults = { color = "red" }
+
+local t = setmetatable({}, {
+  __index = defaults,                  -- retrieve missing keys from defaults
+  __tostring = function() return "my table" end,
+  __add = function(a, b) return "added!" end,
+})
+
+print(t.color)     --> red      (retrieved via __index)
+print(t)           --> my table (via __tostring)
+print(t + t)       --> added!   (via __add)`
+  },
+  {
+    title: "Table Library",
+    description: "table.* — sort, insert, remove, concat, pack/unpack. Retrieve the results by indexing, iterating, or concatenating.",
+    code: `local t = { 3, 1, 2 }
+table.sort(t)
+print(table.concat(t, ", "))           --> 1, 2, 3
+
+table.insert(t, 1, 0)                  -- insert at the front
+table.remove(t, #t)                    -- remove the last element
+print(table.concat(t, ", "))           --> 0, 1, 2
+
+local packed = table.pack("a", "b")    -- wrap varargs in a table
+print(packed.n)                        --> 2   (retrieve the count)
+print(table.unpack(packed))            --> a   b`
+  },
+  {
+    title: "Math Library",
+    description: "math.* — floor, ceil, max, min, random, pi. The values are plain numbers: assign or print them.",
+    code: `print(math.floor(3.7))    --> 3
+print(math.ceil(3.2))     --> 4
+print(math.max(4, 9, 1))  --> 9
+print(math.min(4, 9, 1))  --> 1
+print(string.format("%.3f", math.pi))  --> 3.142
+
+math.randomseed(os.time())
+print(math.random(1, 6))  --> a random die roll`
+  },
+  {
+    title: "File I/O",
+    description: "io.* — write and read files (on an in-memory filesystem inside this page). io.write goes straight to the console; read() retrieves the contents back.",
+    code: `-- io.write writes without a newline; print() adds one
+io.write("no newline: ")
+print("print adds one")
+
+-- io.open returns a file handle; write to it and close
+local f = assert(io.open("hello.txt", "w"))
+f:write("Hello from a file!\\nSecond line\\n")
+f:close()
+
+-- reopen it and read the whole contents back
+f = assert(io.open("hello.txt", "r"))
+local all = f:read("*a")     -- retrieve everything
+f:close()
+print(all)
+
+-- or retrieve it line by line
+for line in io.lines("hello.txt") do
+  print("line:", line)
+end`
+  },
+  {
+    title: "OS Library",
+    description: "os.* — time, date, clock. The values are retrieved as numbers and strings.",
+    code: `local t = os.time()                    -- seconds since the epoch
+print(t)
+
+print(os.date("%Y-%m-%d %H:%M:%S", t)) -- format the retrieved time
+
+-- measure how long a loop takes
+local start = os.clock()               -- CPU time so far
+for i = 1, 100000 do end
+print(string.format("took %.4fs", os.clock() - start))`
+  },
+  {
+    title: "Coroutines",
+    description: "coroutine.* — suspend a function with yield() and resume it. coroutine.resume() returns the yielded values — that is how you retrieve them.",
+    code: `local co = coroutine.create(function(a, b)
+  local sum = a + b
+  local inc = coroutine.yield(sum)     -- suspend, passing sum out
+  return sum + inc                     -- finish with a final value
+end)
+
+-- first resume runs to the first yield; retrieve its values
+local ok, sum = coroutine.resume(co, 10, 20)
+print(ok, sum)            --> true  30
+
+-- resume again: the argument becomes the result of yield()
+local ok, total = coroutine.resume(co, 5)
+print(ok, total)          --> true  35`
+  },
+  {
+    title: "UTF-8",
+    description: "utf8.* — UTF-8 aware length and code points. Note that # counts bytes, while utf8.len() counts characters.",
+    code: `local s = "café"
+print(#s)                 --> 5 (bytes)
+print(utf8.len(s))        --> 4 (characters)
+
+print(utf8.char(72, 105)) --> Hi  (build a string from code points)
+
+-- iterate code points with their byte positions
+for i, cp in utf8.codes(s) do
+  print(i, cp)
+end`
+  },
+  {
+    title: "Patterns",
+    description: "string patterns — the mini-language behind find/match/gmatch/gsub. Captures (...) let you retrieve the parts you care about.",
+    code: `-- one class per character: %a letters, %d digits, + repeats it
+print(string.match("hello 123", "%a+"))       --> hello
+print(string.match("hello 123", "%d+"))       --> 123
+
+-- captures (...) retrieve parts of the match
+local day, month = string.match("Today is 03/08/2026", "(%d+)/(%d+)")
+print(day, month)                             --> 03  08
+
+-- anchors: ^ matches the start, $ the end
+print(string.match("hello world", "^hello"))  --> hello
+print(string.match("hello world", "world$"))  --> world
+
+-- gmatch iterates every match; retrieve them one by one
+for word in string.gmatch("one two three", "%a+") do
+  print(word)
+end`
+  }
+];
+
+let activeIndex = 0;
+let engineReady = false;
+let runSeq = 0;
+
+const outputBox = document.getElementById("output");
+const descriptionEl = document.getElementById("description");
+const tabsEl = document.getElementById("tabs");
+const runBtn = document.getElementById("runBtn");
+const compileBtn = document.getElementById("compileBtn");
+
+/* ------------------------ Lua engine (Wasmoon) ------------------------ */
+
+const WASM_URI = "https://cdn.jsdelivr.net/npm/wasmoon@1.16.0/dist/glue.wasm";
+const factory = new wasmoon.LuaFactory(WASM_URI);
+
+// Re-route print()/io.write() through JS so output lands in the console below.
+// The overrides reproduce Lua 5.4's exact semantics:
+//   - print() converts each argument with tostring() (so tables show their
+//     identity address "table: 0x..."), joins with tabs, ends with a newline.
+//   - io.write() accepts only strings and numbers, written with no separators.
+const SETUP_LUA = `
+print = function(...)
+  local parts = {}
+  for i = 1, select('#', ...) do
+    parts[i] = tostring(select(i, ...))
+  end
+  __pg_print(table.concat(parts, "\\t"))
+end
+
+io.write = function(...)
+  local parts = {}
+  for i = 1, select('#', ...) do
+    local v = select(i, ...)
+    local t = type(v)
+    if t ~= "string" and t ~= "number" then
+      error("bad argument #" .. i .. " to 'write' (string expected, got " .. t .. ")", 2)
+    end
+    parts[i] = tostring(v)
+  end
+  __pg_write(table.concat(parts))
+  return io.output()
+end
+`;
+
+// Run the user code under pcall so errors are captured. Like the real Lua 5.4
+// REPL, a single-line input is first tried as "return <code>;", so bare
+// expressions (2+2) and expression statements (string.find(...)) auto-print.
+// Anything else falls back to a normal chunk.
+const RUNNER_LUA = `
+local f, err
+if __pg_single then
+  f, err = load("return " .. __pg_code .. ";", "playground")
+end
+if not f then
+  f, err = load(__pg_code, "playground")
+end
+if not f then
+  __pg_done("syntax", tostring(err))
+  return
+end
+local results = table.pack(pcall(f))
+if results[1] then
+  if results.n > 1 then
+    local args = {}
+    for i = 2, results.n do
+      args[i - 1] = tostring(results[i])
+    end
+    __pg_print(table.concat(args, "\\t"))
+  end
+  __pg_done("ok")
+else
+  __pg_done("error", tostring(results[2]))
+end
+`;
+
+// Compile-only: check the code loads without executing it.
+const COMPILE_LUA = `
+local f, err
+if __pg_single then
+  f, err = load("return " .. __pg_code .. ";", "playground")
+end
+if not f then
+  f, err = load(__pg_code, "playground")
+end
+if f then __pg_compile_done("ok") else __pg_compile_done("error", tostring(err)) end
+`;
+
+async function newEngine(emit) {
+  const lua = await factory.createEngine();
+  lua.global.set("__pg_print", text => emit(text, true));
+  lua.global.set("__pg_write", text => emit(text, false));
+  await lua.doString(SETUP_LUA);
+  return lua;
+}
+
+function effectiveLineCount(code) {
+  return code
+    .split("\n")
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.startsWith("--")).length;
+}
+
+function cleanError(e) {
+  const msg = String((e && e.message) || e);
+  return msg.split("\n")[0];
+}
+
+/* ------------------------------ UI ------------------------------ */
+
+function clearOutput() {
+  outputBox.textContent = "";
+}
+
+function addLine(type, text) {
+  const el = document.createElement("div");
+  el.className = "line out-" + type;
+  el.textContent = text;
+  outputBox.appendChild(el);
+}
+
+function showEmpty() {
+  const el = document.createElement("div");
+  el.className = "empty";
+  el.textContent = "(no output)";
+  outputBox.appendChild(el);
+}
+
+function renderResult(lines, elapsed, ok) {
+  if (lines.length === 0) showEmpty();
+  else for (const line of lines) addLine(line.type, line.text);
+  const time = document.createElement("div");
+  time.className = "out-time";
+  time.textContent = (ok ? "✓ ran in " : "✗ failed in ") + elapsed.toFixed(2) + " ms";
+  outputBox.appendChild(time);
+  outputBox.scrollTop = outputBox.scrollHeight;
+}
+
+async function run() {
+  const seq = ++runSeq;
+  const code = editor.getValue();
+  clearOutput();
+  const lines = [];
+  let pending = null;
+  // Faithful stdout model: print()/REPL results write text + newline;
+  // io.write() writes text with no newline (an unterminated pending line).
+  const emit = (text, newline) => {
+    if (newline) {
+      if (pending !== null) {
+        lines.push({ type: "stdout", text: pending + text });
+        pending = null;
+      } else {
+        lines.push({ type: "stdout", text });
+      }
+    } else {
+      pending = (pending === null ? "" : pending) + text;
+    }
+  };
+
+  const done = { kind: "ok" };
+  let lua;
+  try {
+    lua = await newEngine(emit);
+    lua.global.set("__pg_code", code);
+    lua.global.set("__pg_single", effectiveLineCount(code) === 1);
+    lua.global.set("__pg_done", (kind, text) => { done.kind = kind; done.text = text; });
+  } catch (e) {
+    if (seq !== runSeq) return;
+    renderResult([{ type: "error", text: cleanError(e) }], 0, false);
+    return;
+  }
+
+  const t0 = performance.now();
+  try {
+    await lua.doString(RUNNER_LUA);
+  } catch (e) {
+    done.kind = "error";
+    done.text = cleanError(e);
+  }
+  const elapsed = performance.now() - t0;
+
+  if (pending !== null) {
+    lines.push({ type: "stdout", text: pending });
+    pending = null;
+  }
+
+  if (seq !== runSeq) return;
+
+  if (done.kind === "error" || done.kind === "syntax") {
+    lines.push({ type: "error", text: done.text });
+    renderResult(lines, elapsed, false);
+  } else {
+    renderResult(lines, elapsed, true);
+  }
+}
+
+async function compile() {
+  const code = editor.getValue();
+  clearOutput();
+  const done = { kind: "ok" };
+  let lua;
+  try {
+    lua = await newEngine(() => {});
+    lua.global.set("__pg_code", code);
+    lua.global.set("__pg_single", effectiveLineCount(code) === 1);
+    lua.global.set("__pg_compile_done", (kind, text) => { done.kind = kind; done.text = text; });
+    await lua.doString(COMPILE_LUA);
+  } catch (e) {
+    done.kind = "error";
+    done.text = cleanError(e);
+  }
+  if (done.kind === "ok") {
+    addLine("ok", "✓ Compiled successfully — Lua 5.4 accepted the code.");
+  } else {
+    addLine("error", done.text);
+  }
+  outputBox.scrollTop = outputBox.scrollHeight;
+}
+
+function reset() {
+  editor.setValue(EXAMPLES[activeIndex].code);
+  if (engineReady) run();
+  else clearOutput();
+}
+
+function copy() {
+  const ok = navigator.clipboard && window.isSecureContext
+    ? navigator.clipboard.writeText(editor.getValue())
+    : (() => {
+        const ta = document.createElement("textarea");
+        ta.value = editor.getValue();
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        let success = false;
+        try { success = document.execCommand("copy"); } catch (e) { success = false; }
+        document.body.removeChild(ta);
+        return Promise.resolve(success);
+      })();
+
+  const btn = document.getElementById("copyBtn");
+  const original = btn.textContent;
+  ok.then(success => {
+    btn.textContent = success ? "Copied!" : "Copy failed";
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1200);
+  });
+}
+
+function switchExample(index) {
+  activeIndex = index;
+  document.querySelectorAll(".tab").forEach((t, i) => t.classList.toggle("active", i === index));
+  descriptionEl.textContent = EXAMPLES[index].description;
+  editor.setValue(EXAMPLES[index].code);
+  editor.focus();
+  // MDN-style: run the selected example immediately.
+  if (engineReady) run();
+  else clearOutput();
+}
+
+const editor = CodeMirror(document.getElementById("editor"), {
+  value: EXAMPLES[0].code,
+  mode: "lua",
+  theme: "dracula",
+  lineNumbers: true,
+  tabSize: 2,
+  indentUnit: 2,
+  indentWithTabs: false,
+  matchBrackets: true,
+  autofocus: true,
+  viewportMargin: Infinity,
+  extraKeys: { "Ctrl-Enter": run, "Cmd-Enter": run }
+});
+
+EXAMPLES.forEach((ex, i) => {
+  const btn = document.createElement("button");
+  btn.className = "tab" + (i === 0 ? " active" : "");
+  btn.textContent = ex.title;
+  btn.addEventListener("click", () => switchExample(i));
+  tabsEl.appendChild(btn);
+});
+
+runBtn.addEventListener("click", run);
+compileBtn.addEventListener("click", compile);
+document.getElementById("resetBtn").addEventListener("click", reset);
+document.getElementById("copyBtn").addEventListener("click", copy);
+
+descriptionEl.textContent = EXAMPLES[0].description;
+addLine("empty", "Loading Lua 5.4 (Wasmoon)…");
+
+factory.getLuaModule()
+  .then(() => {
+    engineReady = true;
+    runBtn.disabled = false;
+    compileBtn.disabled = false;
+    clearOutput();
+    run();
+  })
+  .catch(e => {
+    clearOutput();
+    addLine("error", "Failed to load the Lua 5.4 engine: " + cleanError(e));
+  });
+</script>
+</body>
+</html>
